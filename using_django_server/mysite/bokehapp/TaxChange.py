@@ -111,7 +111,6 @@ s1.circle(line_x, avg_tax_change, fill_color="white", size=8)
 # Add the slider
 code = """
     var sources = %s;
-    debugger;
     var year = slider.value;
     var new_source_data = sources[year].data;
     var data = renderer_source.data;
@@ -123,7 +122,9 @@ code = """
         data['Tax Units with Tax Increase'][i] = new_source_data['Tax Units with Tax Increase'][i];
     }
 
-    label_source.data['year'] = String(year);
+    for (i=0; i < label_source.data['text'].length; i++){
+        label_source.data['text'][i] = String(year);
+    }
 
     label_source.change.emit();
     renderer_source.change.emit();
@@ -137,6 +138,8 @@ slider = Slider(start=years[0], end=years[-1], value=years[0], step=1,
 callback.args["renderer_source"] = renderer_source
 callback.args["slider"] = slider
 callback.args["label_source"] = label_source
+
+# import pdb; pdb.set_trace()
 
 # create output fileoutput_file("bar.html")
 output_file("bar.html")
