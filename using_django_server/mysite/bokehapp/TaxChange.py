@@ -5,7 +5,7 @@ from math import pi
 
 # importing Bokeh libraries
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, CustomJS, Slider, Text
+from bokeh.models import ColumnDataSource, CustomJS, Slider, LabelSet
 # from bkcharts import Line, Bar
 # from bkcharts.attributes import cat, ColorAttr, color
 # from bkcharts.operations import blend
@@ -57,13 +57,26 @@ js_source_array = str(dictionary_of_sources).replace("'", "")
 renderer_source = sources_df['_%s' % years[0]]
 
 # add the year as text plot
-text_source = ColumnDataSource({'year': ['%s' % years[0]]})
-text = Text(x=0.8, y=600, text='year', text_font_size='20pt',
-            text_color='#0569CE', text_alpha=1)
+# text_source = ColumnDataSource({'year': ['%s' % years[0]]})
+# text = Text(x=0.8, y=600, text='year', text_font_size='20pt',
+#             text_color='#0569CE', text_alpha=1)
+# label_source = ColumnDataSource({'year': ['%s' % years[0]]})
+# label = Label(x=70, y=70, text='year', border_line_alpha=1, x_units='screen',
+#               y_units='screen', render_mode='css')
+# label = LabelSet(x=60, y=370, x_units='screen', y_units='screen',
+#                  text='%s' % years[0], render_mode='css',
+#                  border_line_color='black', border_line_alpha=0.0,
+#                  background_fill_color='white', background_fill_alpha=1.0)
+
+label_source = ColumnDataSource({'text': [str(years[0])]})
+label = LabelSet(x=0.5, y=600, text='text', level='glyph', source=label_source,
+                 render_mode='canvas', text_font_size='50pt', text_color='#0569CE')
 
 # add the Bar graph
-p = figure(plot_width=600, plot_height=500,
-           x_range=FactorRange(*renderer_source.data['Intervals']))
+p = figure(plot_width=600, plot_height=500, y_range=[-1000, 1000],
+           x_range=FactorRange(*renderer_source.data['Intervals']),
+           tools="box_zoom, reset, save")
+p.toolbar.logo = None
 
 # import pdb; pdb.set_trace()
 
@@ -73,16 +86,16 @@ p.vbar(top='Tax Units with Tax Cut', x='Intervals', width=0.4, color='silver',
        source=renderer_source)
 p.xaxis.axis_label = 'Income [$ thousands]'
 p.xaxis.major_label_orientation = pi/4
+p.yaxis.axis_label = 'Tax Units with Tax Cut            Tax Units with Tax Increase'
 p.yaxis.major_label_orientation = "vertical"
 
 # add the text as a glyph
-p.add_glyph(text_source, text)
+p.add_layout(label)
 
 # Create the "Average tax" figure
 s1 = figure(plot_width=600, plot_height=200, title='Average Tax Change',
             tools="box_zoom, reset, save")
 s1.toolbar.logo = None
-s1.toolbar_sticky = False
 s1.title.text_color = '#0569CE'
 s1.xaxis.axis_label = 'Income [$ thousands]'
 
@@ -97,34 +110,33 @@ s1.circle(line_x, avg_tax_change, fill_color="white", size=8)
 
 # Add the slider
 code = """
-    var year = slider.value;
     var sources = %s;
+    debugger;
+    var year = slider.value;
     var new_source_data = sources[year].data;
     var data = renderer_source.data;
 
-    debugger
+    for (i = 0; i < renderer_source.data['index'].length; i++){
+        data['Average Tax Change'][i] = new_source_data['Average Tax Change'][i];
+        data['Intervals'][i] = new_source_data['Intervals'][i];
+        data['Tax Units with Tax Cut'][i] = new_source_data['Tax Units with Tax Cut'][i];
+        data['Tax Units with Tax Increase'][i] = new_source_data['Tax Units with Tax Increase'][i];
+    }
 
-        for (i = 0; i < renderer_source.data['index'].length; i++){
-            data['Average Tax Change'][i] = new_source_data['Average Tax Change'][i];
-            data['Intervals'][i] = new_source_data['Intervals'][i];
-            data['Tax Units with Tax Cut'][i] = new_source_data['Tax Units with Tax Cut'][i];
-            data['Tax Units with Tax Increase'][i] = new_source_data['Tax Units with Tax Increase'][i];
-        }
+    label_source.data['year'] = String(year);
 
-    text_source.data['year'] = String(year);
-
-    text_source.change.emit();
+    label_source.change.emit();
     renderer_source.change.emit();
 
     debugger;
 """ % js_source_array
 
 callback = CustomJS(args=sources_df, code=code)
-slider = Slider(start=years[0], end=years[-1], value=1, step=1, title="Year",
-                callback=callback)
+slider = Slider(start=years[0], end=years[-1], value=years[0], step=1,
+                title="Year", callback=callback)
 callback.args["renderer_source"] = renderer_source
 callback.args["slider"] = slider
-callback.args["text_source"] = text_source
+callback.args["label_source"] = label_source
 
 # create output fileoutput_file("bar.html")
 output_file("bar.html")
@@ -134,6 +146,8 @@ lay_out = layout([[p_l], [slider]])
 js, div = components(lay_out)
 cdn_js = CDN.js_files[0]
 cdn_css = CDN.css_files[0]
+widget_js = CDN.js_files[1]
+widget_css = CDN.css_files[1]
 
 
 
